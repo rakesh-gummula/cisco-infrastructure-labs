@@ -1,0 +1,101 @@
+# Network Automation: Router Configuration & Backup using Python
+
+## Project Goal
+   1. Initial Router Configuration
+   2. Backup of running configs
+
+## Tools Required
+   1. Python
+   2. GNS3 or Cisco Packet Tracer 
+   3. Netmiko
+
+## Network Topology (Simple but Effective)
+    2 Routers (R1, R2)
+    1 Switch
+    Your PC (automation machine)
+
+## FOLLOW THE SEQUENCE
+ Step 1: Configure Router for SSH (Manual One-Time Setup)
+         On each router:
+ Bash:   hostname R1
+         ip domain-name lab.local
+         crypto key generate rsa
+         username admin password cisco
+         line vty 0 4
+         login local
+         transport input ssh
+
+         Assign IP to interface:
+Bash:    interface g0/0
+         ip address 192.168.1.1 255.255.255.0
+         no shutdown
+
+Step 2: Python Script – Send Config Automatically
+Python:
+from netmiko import ConnectHandler
+
+router = {
+    "device_type": "cisco_ios",
+    "host": "192.168.1.1",
+    "username": "admin",
+    "password": "cisco",
+}
+
+commands = [
+    "interface g0/1",
+    "ip address 10.10.10.1 255.255.255.0",
+    "no shutdown",
+    "router ospf 1",
+    "network 10.10.10.0 0.0.0.255 area 0"
+]
+
+connection = ConnectHandler(**router)
+
+output = connection.send_config_set(commands)
+
+print(output)
+
+connection.disconnect() 
+
+Step 3: Backup Configuration Script
+Python:
+from netmiko import ConnectHandler
+
+router = {
+    "device_type": "cisco_ios",
+    "host": "192.168.1.1",
+    "username": "admin",
+    "password": "cisco",
+}
+
+connection = ConnectHandler(**router)
+
+output = connection.send_command("show running-config")
+
+with open("R1_backup.txt", "w") as file:
+    file.write(output)
+
+connection.disconnect()
+
+print("Backup completed!")
+
+To Make this project much more impressive add Multiple Router and config them
+You can also make it clean and structured hierarchy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
