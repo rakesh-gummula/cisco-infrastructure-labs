@@ -1,0 +1,88 @@
+This is a Python Souce Code for Network Topology Simulator
+
+import ipaddress
+import time
+
+class Host:
+    def __init__(self, hostname, ip_with_cidr, mac_address):
+        self.hostname = hostname
+        self.mac_address = mac_address
+        # The IPv4Interface object automatically handles IP, Subnet Mask, and Network ID math
+        self.interface = ipaddress.IPv4Interface(ip_with_cidr)
+        self.connected_link = None
+        self.arp_cache = {}
+
+    def connect(self, link):
+        self.connected_link = link
+        print(f"[*] {self.hostname} connected to a link.")
+
+    def ping(self, target_ip_str, network_topology):
+        target_ip = ipaddress.IPv4Address(target_ip_str)
+        print(f"\n[{self.hostname}] Initiating ping to {target_ip}...")
+        
+        # CCNA Logic: Is the destination in the same subnet?
+        if target_ip in self.interface.network:
+            print(f"[{self.hostname}] Target is on the local subnet: {self.interface.network}")
+            self._simulate_arp_and_send(target_ip, network_topology)
+        else:
+            print(f"[{self.hostname}] Target is on a remote subnet. Sending to Default Gateway...")
+            # Future feature: Implement Default Gateway routing logic here!
+
+    def _simulate_arp_and_send(self, target_ip, network_topology):
+        print(f"[{self.hostname}] Checking ARP Cache...")
+        
+        if target_ip not in self.arp_cache:
+            print(f"[{self.hostname}] ARP miss! Broadcasting ARP Request for {target_ip}...")
+            time.sleep(1) # Simulate network delay
+            
+            # Simulate ARP resolution by searching the topology (the "switch" behavior)
+            target_mac = network_topology.resolve_arp(target_ip)
+            if target_mac:
+                self.arp_cache[target_ip] = target_mac
+                print(f"[{self.hostname}] ARP Reply received: {target_ip} is at {target_mac}")
+            else:
+                print(f"[{self.hostname}] ARP Request timed out. Destination Host Unreachable.")
+                return
+
+        # Send the ICMP Echo Request
+        print(f"[{self.hostname}] Sending ICMP Echo Request to {self.arp_cache[target_ip]}...")
+        time.sleep(1)
+        print(f"[{self.hostname}] ICMP Echo Reply received from {target_ip} (Success!)")
+
+class NetworkTopology:
+    """A simple management class to simulate the physical medium/switch"""
+    def __init__(self):
+        self.devices = []
+
+    def add_device(self, device):
+        self.devices.append(device)
+
+    def resolve_arp(self, target_ip):
+        # Simulates an ARP broadcast reaching all devices
+        for device in self.devices:
+            if device.interface.ip == target_ip:
+                return device.mac_address
+        return None
+
+# ==========================================
+# Running the Simulation
+# ==========================================
+if __name__ == "__main__":
+    print("--- Starting Network Simulator ---")
+    
+    # 1. Initialize the Topology
+    lab_network = NetworkTopology()
+
+    # 2. Create two PCs on the same subnet (/24)
+    pc1 = Host(hostname="PC-A", ip_with_cidr="192.168.1.10/24", mac_address="AA:AA:AA:AA:AA:AA")
+    pc2 = Host(hostname="PC-B", ip_with_cidr="192.168.1.20/24", mac_address="BB:BB:BB:BB:BB:BB")
+    
+    # Add them to our "network"
+    lab_network.add_device(pc1)
+    lab_network.add_device(pc2)
+
+    # 3. Simulate PC1 pinging PC2
+    pc1.ping("192.168.1.20", lab_network)
+    
+    # 4. Simulate a failed ping (host doesn't exist)
+    pc1.ping("192.168.1.99", lab_network)
