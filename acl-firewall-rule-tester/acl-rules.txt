@@ -1,0 +1,8 @@
+! Allow specific admin subnet
+permit ip 192.168.10.0 0.0.0.255 any
+
+! Block a known bad actor host
+deny ip 10.5.5.5 0.0.0.0 any
+
+! Allow general user traffic
+permit ip 10.0.0.0 0.255.255.255 any
