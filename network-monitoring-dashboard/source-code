@@ -1,0 +1,384 @@
+import React, { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Cloud,
+  Cpu,
+  Database,
+  Download,
+  Globe,
+  HardDrive,
+  LayoutDashboard,
+  Search,
+  Server,
+  Shield,
+  Wifi,
+  Zap,
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+const uptimeData = [
+  { time: '00:00', latency: 42, throughput: 62 },
+  { time: '04:00', latency: 38, throughput: 59 },
+  { time: '08:00', latency: 51, throughput: 72 },
+  { time: '12:00', latency: 47, throughput: 81 },
+  { time: '16:00', latency: 59, throughput: 76 },
+  { time: '20:00', latency: 45, throughput: 70 },
+  { time: 'Now', latency: 36, throughput: 84 },
+];
+
+const devices = [
+  { name: 'Core Router-01', ip: '10.0.1.1', type: 'Router', status: 'Healthy', latency: '3ms', uptime: '99.99%' },
+  { name: 'Web Server-02', ip: '10.0.2.12', type: 'Server', status: 'Warning', latency: '28ms', uptime: '99.72%' },
+  { name: 'DB Cluster-01', ip: '10.0.3.20', type: 'Database', status: 'Healthy', latency: '7ms', uptime: '99.95%' },
+  { name: 'Edge Firewall', ip: '10.0.0.254', type: 'Security', status: 'Critical', latency: '42ms', uptime: '98.11%' },
+  { name: 'WiFi AP-07', ip: '10.0.4.7', type: 'Access Point', status: 'Healthy', latency: '5ms', uptime: '99.88%' },
+];
+
+const alerts = [
+  { level: 'Critical', message: 'Packet loss on Edge Firewall exceeded threshold.', time: '2 min ago' },
+  { level: 'Warning', message: 'CPU usage on Web Server-02 reached 87%.', time: '9 min ago' },
+  { level: 'Info', message: 'Backup sync completed successfully.', time: '26 min ago' },
+  { level: 'Warning', message: 'Latency spike detected in Office VLAN 20.', time: '41 min ago' },
+];
+
+const statCards = [
+  { label: 'Devices Online', value: '128', delta: '+6 today', icon: Server, accent: 'from-sky-500 to-cyan-400' },
+  { label: 'Avg Latency', value: '18 ms', delta: '-4 ms', icon: Clock3, accent: 'from-emerald-500 to-teal-400' },
+  { label: 'Packet Loss', value: '0.8%', delta: '-0.3%', icon: Activity, accent: 'from-amber-500 to-orange-400' },
+  { label: 'Active Alerts', value: '7', delta: '2 critical', icon: Bell, accent: 'from-rose-500 to-pink-400' },
+];
+
+function Badge({ children, tone = 'neutral' }) {
+  const styles = {
+    neutral: 'bg-slate-800/80 text-slate-200 ring-slate-700',
+    healthy: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
+    warning: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
+    critical: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
+    info: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${styles[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function StatCard({ label, value, delta, icon: Icon, accent }) {
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-400">{label}</p>
+          <div className="mt-2 flex items-end gap-3">
+            <h3 className="text-3xl font-semibold text-white">{value}</h3>
+            <span className="mb-1 text-sm text-slate-400">{delta}</span>
+          </div>
+        </div>
+        <div className={`rounded-2xl bg-gradient-to-br ${accent} p-3 text-white shadow-lg`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function SectionTitle({ title, subtitle, action }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <p className="text-sm text-slate-400">{subtitle}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+export default function NetworkMonitoringDashboard() {
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesFilter = filter === 'All' || device.status === filter;
+      const q = search.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        device.name.toLowerCase().includes(q) ||
+        device.ip.toLowerCase().includes(q) ||
+        device.type.toLowerCase().includes(q);
+      return matchesFilter && matchesSearch;
+    });
+  }, [filter, search]);
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto flex max-w-[1600px] gap-6 p-4 lg:p-6">
+        <aside className="hidden w-72 flex-col rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur lg:flex">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 p-3 text-white">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">NetPulse</p>
+              <h1 className="text-xl font-semibold text-white">Monitoring Hub</h1>
+            </div>
+          </div>
+
+          <nav className="mt-8 space-y-2 text-sm">
+            {[
+              ['Dashboard', LayoutDashboard],
+              ['Topology', Globe],
+              ['Devices', Server],
+              ['Performance', BarChart3],
+              ['Security', Shield],
+              ['Storage', HardDrive],
+            ].map(([label, Icon], idx) => (
+              <button
+                key={label}
+                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                  idx === 0 ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-auto rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
+            <div className="flex items-center gap-2 text-emerald-300">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="text-sm font-medium">All systems nominal</span>
+            </div>
+            <p className="mt-2 text-sm text-slate-400">Last refresh: 12 seconds ago</p>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 space-y-6">
+          <header className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Zap className="h-4 w-4" />
+                  <span className="text-sm">Real-time network visibility</span>
+                </div>
+                <h1 className="mt-2 text-3xl font-bold text-white">Network Monitoring Dashboard</h1>
+                <p className="mt-2 max-w-2xl text-sm text-slate-400">
+                  Track device health, latency, throughput, alerts, and uptime in one clean dashboard.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-slate-400">
+                  <Search className="h-4 w-4" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search devices"
+                    className="w-44 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
+                <button className="flex items-center justify-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-200 hover:bg-slate-900">
+                  <Download className="h-4 w-4" />
+                  Export
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {statCards.map((card) => (
+              <StatCard key={card.label} {...card} />
+            ))}
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
+              <SectionTitle
+                title="Performance Overview"
+                subtitle="Latency and throughput trends across the day"
+                action={
+                  <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-2 text-sm text-slate-300 hover:bg-slate-900">
+                    Today <ChevronDown className="h-4 w-4" />
+                  </button>
+                }
+              />
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={uptimeData}>
+                    <defs>
+                      <linearGradient id="latency" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopOpacity={0.45} />
+                        <stop offset="95%" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="throughput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopOpacity={0.45} />
+                        <stop offset="95%" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="time" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#0f172a',
+                        border: '1px solid #1e293b',
+                        borderRadius: '16px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Area type="monotone" dataKey="latency" strokeWidth={2} stroke="#38bdf8" fill="url(#latency)" />
+                    <Area type="monotone" dataKey="throughput" strokeWidth={2} stroke="#34d399" fill="url(#throughput)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ['Avg Latency', '18 ms'],
+                  ['Peak Throughput', '94 Mbps'],
+                  ['Jitter', '2.1 ms'],
+                  ['Packet Loss', '0.8%'],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <p className="text-xs text-slate-400">{label}</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
+                <SectionTitle title="Live Alerts" subtitle="Recent incidents and status changes" />
+                <div className="space-y-3">
+                  {alerts.map((alert) => {
+                    const tone =
+                      alert.level === 'Critical' ? 'critical' : alert.level === 'Warning' ? 'warning' : 'info';
+                    return (
+                      <div key={alert.message} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <Badge tone={tone}>{alert.level}</Badge>
+                            <p className="mt-2 text-sm text-slate-200">{alert.message}</p>
+                          </div>
+                          <span className="text-xs text-slate-500">{alert.time}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
+                <SectionTitle title="Health Snapshot" subtitle="Infrastructure summary" />
+                <div className="space-y-4 text-sm">
+                  {[
+                    { label: 'CPU', value: '63%', tone: 'healthy' },
+                    { label: 'Memory', value: '71%', tone: 'warning' },
+                    { label: 'Disk IO', value: '44%', tone: 'healthy' },
+                    { label: 'Network', value: '89%', tone: 'warning' },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-slate-300">{item.label}</span>
+                        <span className="text-slate-400">{item.value}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-800">
+                        <div
+                          className={`h-2 rounded-full ${
+                            item.tone === 'healthy' ? 'bg-emerald-400' : 'bg-amber-400'
+                          }`}
+                          style={{ width: item.value }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
+            <SectionTitle
+              title="Device Inventory"
+              subtitle="Search, filter, and inspect the active network nodes"
+              action={
+                <div className="flex gap-2">
+                  {['All', 'Healthy', 'Warning', 'Critical'].map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => setFilter(item)}
+                      className={`rounded-2xl px-4 py-2 text-sm transition ${
+                        filter === item ? 'bg-white text-slate-950' : 'bg-slate-950/70 text-slate-300 hover:bg-slate-900'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+            <div className="overflow-hidden rounded-2xl border border-slate-800">
+              <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+                <thead className="bg-slate-950/80 text-slate-400">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Device</th>
+                    <th className="px-4 py-3 font-medium">IP Address</th>
+                    <th className="px-4 py-3 font-medium">Type</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Latency</th>
+                    <th className="px-4 py-3 font-medium">Uptime</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 bg-slate-950/40">
+                  {filteredDevices.map((device) => {
+                    const tone =
+                      device.status === 'Healthy' ? 'healthy' : device.status === 'Warning' ? 'warning' : 'critical';
+                    return (
+                      <tr key={device.name} className="hover:bg-slate-900/60">
+                        <td className="px-4 py-4 text-white">
+                          <div className="font-medium">{device.name}</div>
+                        </td>
+                        <td className="px-4 py-4 text-slate-400">{device.ip}</td>
+                        <td className="px-4 py-4 text-slate-300">{device.type}</td>
+                        <td className="px-4 py-4">
+                          <Badge tone={tone}>{device.status}</Badge>
+                        </td>
+                        <td className="px-4 py-4 text-slate-300">{device.latency}</td>
+                        <td className="px-4 py-4 text-slate-300">{device.uptime}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Tip: connect this table to your API or WebSocket stream for live updates.
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}
