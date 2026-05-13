@@ -1,0 +1,35 @@
+R2>enable
+R2(privileged-mode)#configure terminal
+
+R2(global-config)#interface g0/0
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+
+interface g0/1
+ ip address 10.0.0.2 255.255.255.252
+ no shutdown
+
+access-list 110 permit ip 192.168.2.0 0.0.0.255 192.168.1.0 0.0.0.255
+
+crypto isakmp policy 10
+ encryption aes 256
+ hash sha
+ authentication pre-share
+ group 2
+ lifetime 86400
+
+crypto isakmp key CCNA@123 address 10.0.0.1
+
+crypto ipsec transform-set TS esp-aes esp-sha-hmac
+ mode tunnel
+
+crypto map VPNMAP 10 ipsec-isakmp
+ set peer 10.0.0.1
+ set transform-set TS
+ match address 110
+
+interface g0/1
+ crypto map VPNMAP
+
+end
+write memory
